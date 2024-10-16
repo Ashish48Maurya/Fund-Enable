@@ -3,7 +3,7 @@ const multer = require('multer');
 const XLSX = require('xlsx');
 const path = require('path');
 const fs = require('fs');
-const mongoose = require('mongoose'); 
+const mongoose = require('mongoose');
 const router = express.Router();
 
 const upload = multer({ dest: './uploads' });
@@ -49,25 +49,12 @@ router.post('/upload', upload.single('file'), async (req, res) => {
 
 router.get('/collections/:collectionName', async (req, res) => {
     const { collectionName } = req.params;
-    if (!collectionName) {
-        try {
-            const collections = await mongoose.connection.db.listCollections().toArray();
-
-            res.status(200).json({
-                message: 'Collections retrieved successfully',
-                collections: collections.map(collection => collection.name)
-            });
-        } catch (error) {
-            console.error('Error fetching collections:', error.message);
-            res.status(500).json({ error: `Internal Server Error ${error.message}` });
-        }
-    }
     try {
         const collection = await mongoose.connection.db.collection(collectionName);
         if (!collection) {
             return res.status(404).json({ error: `Collection '${collectionName}' not found` });
         }
-        const data = await collection.find({}).toArray();
+        const data = await collection.find({}, { projection: { _id: 0, __v: 0 } }).toArray();
         if (data.length === 0) {
             return res.status(404).json({ error: `No data found in collection '${collectionName}'` });
         }
@@ -78,6 +65,20 @@ router.get('/collections/:collectionName', async (req, res) => {
     } catch (error) {
         console.error('Error fetching collection data:', error.message);
         res.status(500).json({ error: `Internal Server Error: ${error.message}` });
+    }
+});
+
+router.get('/collections', async (req, res) => {
+    try {
+        const collections = await mongoose.connection.db.listCollections().toArray();
+
+        res.status(200).json({
+            message: 'Collections retrieved successfully',
+            collections: collections.map(collection => collection.name)
+        });
+    } catch (error) {
+        console.error('Error fetching collections:', error.message);
+        res.status(500).json({ error: `Internal Server Error ${error.message}` });
     }
 });
 
@@ -124,16 +125,7 @@ router.get('/download/:collectionName', async (req, res) => {
         if (data.length === 0) {
             return res.status(404).json({ error: `No data found in collection '${collectionName}'` });
         }
-        const worksheet = XLSX.utils.json_to_sheet(data);
-        const workbook = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(workbook, worksheet, collectionName);
-
-        const excelBuffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
-
-        res.setHeader('Content-Disposition', `attachment; filename=${collectionName}.xlsx`);
-        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-
-        res.send(excelBuffer);
+        return res.status(200).json({data})
     } catch (error) {
         console.error('Error fetching and downloading collection data:', error.message);
         res.status(500).json({ error: `Internal Server Error ${error.message}` });
