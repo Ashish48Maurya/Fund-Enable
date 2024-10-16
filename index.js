@@ -10,7 +10,7 @@ app.use(express.json())
 app.use(cors());
 app.use('/api', router)
 
-app.get('/', (req, res) => {
+app.get('/', async (req, res) => {
     return res.status(200).json({
         message: "Backend is Live 🎉🎉🎉"
     })

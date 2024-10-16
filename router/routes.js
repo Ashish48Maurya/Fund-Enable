@@ -4,6 +4,7 @@ const XLSX = require('xlsx');
 const path = require('path');
 const fs = require('fs');
 const mongoose = require('mongoose');
+const mongoConnect = require('../db');
 const router = express.Router();
 
 const upload = multer({ dest: './uploads' });
@@ -19,7 +20,9 @@ router.post('/upload', upload.single('file'), async (req, res) => {
         const sheetData = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName]);
 
         const collectionName = path.parse(req.file.originalname).name;
+        console.log(collectionName);
         const existingSchema = mongoose.connection.collections[collectionName];
+        console.log(existingSchema);
         if (existingSchema) {
             fs.unlink(filePath, (err) => {
                 if (err) console.error('Failed to delete file:', err);
@@ -140,6 +143,9 @@ router.delete('/collections/:collectionName', async (req, res) => {
             return res.status(404).json({ error: `Collection '${collectionName}' not found` });
         }
         await mongoose.connection.db.dropCollection(collectionName);
+        if (mongoose.models[collectionName]) {
+            delete mongoose.models[collectionName];
+        }
         return res.status(200).json({ message: `Collection '${collectionName}' deleted successfully` });
     } catch (error) {
         console.error('Error deleting collection:', error.message);
