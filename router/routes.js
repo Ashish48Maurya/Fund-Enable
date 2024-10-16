@@ -132,4 +132,20 @@ router.get('/download/:collectionName', async (req, res) => {
     }
 });
 
+router.delete('/collections/:collectionName', async (req, res) => {
+    try {
+        const { collectionName } = req.params;
+        const existingCollection = await mongoose.connection.db.listCollections({ name: collectionName }).toArray();
+        if (existingCollection.length === 0) {
+            return res.status(404).json({ error: `Collection '${collectionName}' not found` });
+        }
+        await mongoose.connection.db.dropCollection(collectionName);
+        return res.status(200).json({ message: `Collection '${collectionName}' deleted successfully` });
+    } catch (error) {
+        console.error('Error deleting collection:', error.message);
+        res.status(500).json({ error: `Internal Server Error: ${error.message}` });
+    }
+});
+
+
 module.exports = router;
